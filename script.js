@@ -7,33 +7,97 @@ const burgerImages = [
 ];
 
 let currentStage = 0;
-let bgmPlaying = false;
+let resetCount = 0;
 let totalCalories = 0;
 let audioCtx = null;
+let bonusCooldown = 0;
+const audioBuffers = {};
+let initPromise = null;
 
-function ensureAudioCtx() {
+function initAudio() {
+    if (initPromise) return initPromise;
+
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    initPromise = Promise.all(
+        ['eating', 'belching', 'farting'].map(name =>
+            fetch(`sound/${name}.mp3`)
+                .then(res => res.arrayBuffer())
+                .then(buf => new Promise((resolve, reject) => {
+                    try {
+                        audioCtx.decodeAudioData(buf, decoded => {
+                            audioBuffers[name] = decoded;
+                            resolve();
+                        }, reject);
+                    } catch (e) {
+                        reject(e);
+                    }
+                }))
+        )
+    );
+
+    return initPromise;
+}
+
+function playBuffer(name, volume) {
+    const buf = audioBuffers[name];
+    if (!buf) return;
+    const source = audioCtx.createBufferSource();
+    const gain = audioCtx.createGain();
+    source.buffer = buf;
+    gain.gain.value = volume;
+    source.connect(gain);
+    gain.connect(audioCtx.destination);
+    source.start(0);
+}
+
+function playBonusSound() {
+    if (resetCount < 5) return;
+    if (bonusCooldown > 0) {
+        bonusCooldown--;
+        return;
+    }
+    const rand = Math.random() * 100;
+    if (rand < 1) {
+        bonusCooldown = 5;
+        playBuffer('farting', 1.0);
+    } else if (rand < 3) {
+        bonusCooldown = 5;
+        playBuffer('belching', 1.0);
+    }
+}
+
+function updateCalorieCounter() {
+    document.getElementById('calorieValue').textContent = totalCalories.toLocaleString();
+}
+
+function eatBurger() {
     if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
-}
-
-function decodeAudio(buf) {
-    return new Promise((resolve, reject) => {
-        try {
-            audioCtx.decodeAudioData(buf, resolve, reject);
-        } catch (e) {
-            reject(e);
+        initAudio();
+    } else {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (Object.keys(audioBuffers).length >= 3) {
+            playBuffer('eating', 0.4);
+            playBonusSound();
         }
-    });
+    }
+
+    currentStage = (currentStage + 1) % burgerImages.length;
+    document.getElementById('burgerImage').src = burgerImages[currentStage];
+
+    if (currentStage === 0) {
+        resetCount++;
+        totalCalories += 500;
+        updateCalorieCounter();
+    }
 }
 
-function playSound(src, volume) {
-    fetch(src)
-        .then(res => res.arrayBuffer())
-        .then(buf => decodeAudio(buf))
+document.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+
+document.addEventListener('gesturestart', (e) => e.preventDefault());
         .then(decoded => {
             const source = audioCtx.createBufferSource();
             const gain = audioCtx.createGain();
