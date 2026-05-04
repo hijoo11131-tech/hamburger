@@ -7,7 +7,6 @@ const burgerImages = [
 ];
 
 let currentStage = 0;
-let resetCount = 0;
 let bgmPlaying = false;
 let totalCalories = 0;
 
@@ -35,9 +34,9 @@ function getSfxVolume(base) {
 function playBonusSound() {
     const rand = Math.random() * 100;
     if (rand < 5) {
-        playSound('sound/farting.mp3', getSfxVolume(1.0));
+        playSound('farting.mp3', getSfxVolume(1.0));
     } else if (rand < 12) {
-        playSound('sound/belching.mp3', getSfxVolume(1.0));
+        playSound('belching.mp3', getSfxVolume(1.0));
     }
 }
 
@@ -48,37 +47,34 @@ function updateCalorieCounter() {
 function eatBurger() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
 
-    totalCalories += 500;
-    updateCalorieCounter();
-
     currentStage = (currentStage + 1) % burgerImages.length;
+    document.getElementById('burgerImage').src = burgerImages[currentStage];
 
     if (currentStage === 0) {
-        resetCount++;
+        totalCalories += 500;
+        updateCalorieCounter();
+    }
 
-        if (resetCount % 6 === 0) {
-            bgmPlaying = true;
-            fetch('sound/hambgm.mp3')
-                .then(res => res.arrayBuffer())
-                .then(buf => audioCtx.decodeAudioData(buf))
-                .then(decoded => {
-                    const source = audioCtx.createBufferSource();
-                    const gain = audioCtx.createGain();
-                    source.buffer = decoded;
-                    gain.gain.value = 1.0;
-                    source.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    source.start(0);
-                    source.onended = () => { bgmPlaying = false; };
-                });
-            document.getElementById('burgerImage').src = burgerImages[currentStage];
-            return;
-        }
+    if (totalCalories > 0 && totalCalories % 100000 === 0) {
+        bgmPlaying = true;
+        fetch('hambgm.mp3')
+            .then(res => res.arrayBuffer())
+            .then(buf => audioCtx.decodeAudioData(buf))
+            .then(decoded => {
+                const source = audioCtx.createBufferSource();
+                const gain = audioCtx.createGain();
+                source.buffer = decoded;
+                gain.gain.value = 1.0;
+                source.connect(gain);
+                gain.connect(audioCtx.destination);
+                source.start(0);
+                source.onended = () => { bgmPlaying = false; };
+            });
+        return;
     }
 
     playSound('sound/eating.mp3', getSfxVolume(0.4));
     playBonusSound();
-    document.getElementById('burgerImage').src = burgerImages[currentStage];
 }
 
 document.addEventListener('touchstart', (e) => {

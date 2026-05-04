@@ -39,7 +39,7 @@ body {
 }
 
 .calorie-counter {
-    display: none;
+    display: block;
     position: fixed;
     top: 12px;
     left: 12px;
@@ -68,7 +68,4 @@ body {
         height: 90vh;
     }
 
-    .calorie-counter {
-        display: block;
-    }
 }
