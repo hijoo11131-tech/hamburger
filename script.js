@@ -73,16 +73,6 @@ function updateCalorieCounter() {
 }
 
 function eatBurger() {
-    if (!audioCtx) {
-        initAudio();
-    } else {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        if (Object.keys(audioBuffers).length >= 3) {
-            playBuffer('eating', 0.4);
-            playBonusSound();
-        }
-    }
-
     currentStage = (currentStage + 1) % burgerImages.length;
     document.getElementById('burgerImage').src = burgerImages[currentStage];
 
@@ -91,73 +81,23 @@ function eatBurger() {
         totalCalories += 500;
         updateCalorieCounter();
     }
+
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+
+    initAudio().then(() => {
+        playBuffer('eating', 0.4);
+        playBonusSound();
+    }).catch(() => {});
 }
 
-document.addEventListener('touchstart', (e) => {
-    if (e.touches.length > 1) e.preventDefault();
+const container = document.getElementById('burgerContainer');
+
+container.addEventListener('click', eatBurger);
+
+container.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    eatBurger();
 }, { passive: false });
-
-document.addEventListener('gesturestart', (e) => e.preventDefault());
-        .then(decoded => {
-            const source = audioCtx.createBufferSource();
-            const gain = audioCtx.createGain();
-            source.buffer = decoded;
-            gain.gain.value = volume;
-            source.connect(gain);
-            gain.connect(audioCtx.destination);
-            source.start(0);
-        });
-}
-
-function getSfxVolume(base) {
-    return bgmPlaying ? 0.3 : base;
-}
-
-function playBonusSound() {
-    const rand = Math.random() * 100;
-    if (rand < 15) {
-        playSound('sound/farting.mp3', getSfxVolume(1.0));
-    } else if (rand < 35) {
-        playSound('sound/belching.mp3', getSfxVolume(1.0));
-    }
-}
-
-function updateCalorieCounter() {
-    document.getElementById('calorieValue').textContent = totalCalories.toLocaleString();
-}
-
-function eatBurger() {
-    ensureAudioCtx();
-
-    currentStage = (currentStage + 1) % burgerImages.length;
-    document.getElementById('burgerImage').src = burgerImages[currentStage];
-
-    if (currentStage === 0) {
-        totalCalories += 500;
-        updateCalorieCounter();
-    }
-
-    if (totalCalories > 0 && totalCalories % 5000 === 0) {
-        bgmPlaying = true;
-        fetch('sound/hambgm.mp3')
-            .then(res => res.arrayBuffer())
-            .then(buf => decodeAudio(buf))
-            .then(decoded => {
-                const source = audioCtx.createBufferSource();
-                const gain = audioCtx.createGain();
-                source.buffer = decoded;
-                gain.gain.value = 1.0;
-                source.connect(gain);
-                gain.connect(audioCtx.destination);
-                source.start(0);
-                source.onended = () => { bgmPlaying = false; };
-            });
-        return;
-    }
-
-    playSound('sound/eating.mp3', getSfxVolume(0.4));
-    playBonusSound();
-}
 
 document.addEventListener('touchstart', (e) => {
     if (e.touches.length > 1) e.preventDefault();
