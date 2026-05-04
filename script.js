@@ -9,13 +9,31 @@ const burgerImages = [
 let currentStage = 0;
 let bgmPlaying = false;
 let totalCalories = 0;
+let audioCtx = null;
 
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function ensureAudioCtx() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+}
+
+function decodeAudio(buf) {
+    return new Promise((resolve, reject) => {
+        try {
+            audioCtx.decodeAudioData(buf, resolve, reject);
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
 
 function playSound(src, volume) {
     fetch(src)
         .then(res => res.arrayBuffer())
-        .then(buf => audioCtx.decodeAudioData(buf))
+        .then(buf => decodeAudio(buf))
         .then(decoded => {
             const source = audioCtx.createBufferSource();
             const gain = audioCtx.createGain();
@@ -33,10 +51,10 @@ function getSfxVolume(base) {
 
 function playBonusSound() {
     const rand = Math.random() * 100;
-    if (rand < 5) {
-        playSound('farting.mp3', getSfxVolume(1.0));
-    } else if (rand < 12) {
-        playSound('belching.mp3', getSfxVolume(1.0));
+    if (rand < 15) {
+        playSound('sound/farting.mp3', getSfxVolume(1.0));
+    } else if (rand < 35) {
+        playSound('sound/belching.mp3', getSfxVolume(1.0));
     }
 }
 
@@ -45,7 +63,7 @@ function updateCalorieCounter() {
 }
 
 function eatBurger() {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    ensureAudioCtx();
 
     currentStage = (currentStage + 1) % burgerImages.length;
     document.getElementById('burgerImage').src = burgerImages[currentStage];
@@ -55,11 +73,11 @@ function eatBurger() {
         updateCalorieCounter();
     }
 
-    if (totalCalories > 0 && totalCalories % 100000 === 0) {
+    if (totalCalories > 0 && totalCalories % 5000 === 0) {
         bgmPlaying = true;
-        fetch('hambgm.mp3')
+        fetch('sound/hambgm.mp3')
             .then(res => res.arrayBuffer())
-            .then(buf => audioCtx.decodeAudioData(buf))
+            .then(buf => decodeAudio(buf))
             .then(decoded => {
                 const source = audioCtx.createBufferSource();
                 const gain = audioCtx.createGain();
