@@ -16,10 +16,8 @@ let initPromise = null;
 
 function initAudio() {
     if (initPromise) return initPromise;
-
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
-
     initPromise = Promise.all(
         ['eating', 'belching', 'farting'].map(name =>
             fetch(`sound/${name}.mp3`)
@@ -36,7 +34,6 @@ function initAudio() {
                 }))
         )
     );
-
     return initPromise;
 }
 
@@ -59,11 +56,11 @@ function playBonusSound() {
         return;
     }
     const rand = Math.random() * 100;
-    if (rand < 1) {
-        bonusCooldown = 5;
+    if (rand < 5) {
+        bonusCooldown = 3;
         playBuffer('farting', 1.0);
-    } else if (rand < 3) {
-        bonusCooldown = 5;
+    } else if (rand < 15) {
+        bonusCooldown = 3;
         playBuffer('belching', 1.0);
     }
 }
@@ -75,15 +72,12 @@ function updateCalorieCounter() {
 function eatBurger() {
     currentStage = (currentStage + 1) % burgerImages.length;
     document.getElementById('burgerImage').src = burgerImages[currentStage];
-
     if (currentStage === 0) {
         resetCount++;
         totalCalories += 500;
         updateCalorieCounter();
     }
-
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-
     initAudio().then(() => {
         playBuffer('eating', 0.4);
         playBonusSound();
@@ -91,9 +85,7 @@ function eatBurger() {
 }
 
 const container = document.getElementById('burgerContainer');
-
 container.addEventListener('click', eatBurger);
-
 container.addEventListener('touchend', (e) => {
     e.preventDefault();
     eatBurger();
